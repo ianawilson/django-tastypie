@@ -1778,6 +1778,7 @@ class ModelResource(Resource):
 
         # Save the main object.
         bundle.obj.save()
+        print 'saved ', bundle.obj
 
         # Now pick up the M2M bits.
         m2m_bundle = self.hydrate_m2m(bundle)
@@ -1883,6 +1884,8 @@ class ModelResource(Resource):
                 bundle.obj.delete()
 
     def save_related(self, bundle):
+        import pdb; pdb.set_trace()
+        print 'asdf'
         """
         Handles the saving of related non-M2M data.
 
@@ -1919,14 +1922,15 @@ class ModelResource(Resource):
             # Because sometimes it's ``None`` & that's OK.
             if related_obj:
                 if field_object.related_name:
-                    if not self.get_bundle_detail_data(bundle):
+                    if not bundle.obj.pk:
                         bundle.obj.save()
 
-                    setattr(related_obj, field_object.related_name, bundle.obj)
+                    related_mgr = getattr(related_obj, field_object.related_name)
+                    related_mgr.add(bundle.obj)
 
                 related_obj.save()
                 setattr(bundle.obj, field_object.attribute, related_obj)
-
+    
     def save_m2m(self, bundle):
         """
         Handles the saving of related M2M data.
