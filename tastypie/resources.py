@@ -1904,7 +1904,10 @@ class ModelResource(Resource):
             if not field_object.attribute:
                 continue
 
-            if field_object.blank:
+            if field_object.readonly:
+                continue
+
+            if field_object.blank and not bundle.data.has_key(field_name):
                 continue
 
             # Get the object.
@@ -1915,6 +1918,12 @@ class ModelResource(Resource):
 
             # Because sometimes it's ``None`` & that's OK.
             if related_obj:
+                if field_object.related_name:
+                    if not self.get_bundle_detail_data(bundle):
+                        bundle.obj.save()
+
+                    setattr(related_obj, field_object.related_name, bundle.obj)
+
                 related_obj.save()
                 setattr(bundle.obj, field_object.attribute, related_obj)
 
@@ -1939,7 +1948,15 @@ class ModelResource(Resource):
                 continue
 
             # Get the manager.
-            related_mngr = getattr(bundle.obj, field_object.attribute)
+            related_mngr = None
+
+            if isinstance(field_object.attribute, basestring):
+                related_mngr = getattr(bundle.obj, field_object.attribute)
+            elif callable(field_object.attribute):
+                related_mngr = field_object.attribute(bundle)
+
+            if not related_mngr:
+                continue
 
             if hasattr(related_mngr, 'clear'):
                 # Clear it out, just to be safe.
@@ -1952,6 +1969,7 @@ class ModelResource(Resource):
                 related_objs.append(related_bundle.obj)
 
             related_mngr.add(*related_objs)
+
 
     def get_resource_uri(self, bundle_or_obj):
         """
